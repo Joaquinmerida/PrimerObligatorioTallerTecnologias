@@ -1,85 +1,156 @@
-#! /bin/bash
+#!/bin/bash
 
-menu(){
+listaUsuarios="usuarios.txt"
+diccionario="diccionario.txt"
+
+primerMenu() {
+    echo ~~~~~~~~~~~~~~~~~~~~~~~
     echo "Bienvenido!"
-    echo " "
-    echo "1)Opción 1. Ingresar Usuario y Contraseña."
-    echo "2)Opción 2. Ingresar al sistema."
-    echo "3)Opción 3. Salir del sistema."
-    read inputUsuario
-
+    echo "1) Opción 1. Ingresar Usuario y Contraseña"
+    echo "2) Opción 2. Ingresar al sistema."
+    echo "3) Salir del Sistema."
+    echo ~~~~~~~~~~~~~~~~~~~~~~~
+    echo -n "Ingrese una opción: "
 }
 
-inicio(){
-    menu
-    while [ $inputUsuario -ne 3 ]
-    do
-    if [ $inputUsuario -eq 1 ];
-    then
-        ingresoUsuario
-    elif [ $inputUsuario -eq 2 ]
-    then
-        ingresoAlSistema
-    elif [ $inputUsuario -eq 3 ];
-    then
-        exit
-    else
-    echo "no es una opción valida"
-    fi
-    read inputUsuario
-    done
+segundoMenu() {
+    echo ~~~~~~~~~~~~~~~~~~~~~~~
+    echo "Bienvenido, $usuario!"
+    echo "Último acceso: $ultimoAcceso"
+    echo "1) Cambiar Contraseña."
+    echo "2) Escoger una letra."
+    echo "3) Buscar palabras en el diccionario que finalicen con la letra escogida."
+    echo "4) Contar las palabras de la Opción 3."
+    echo "5) Guardar las palabras en un archivo.txt, en conjunto con la fecha y hora de realizado el informe."
+    echo "6) Volver al Menú Principal."
+    echo ~~~~~~~~~~~~~~~~~~~~~~~
+    echo -n "Ingrese una opción: "
 }
 
-ingresoUsuario(){
-    echo "Bienvenido a la creacion de usuario:"
-    echo "Ingrese su usuario"
-    read usuarioNombre
-    echo "Ingrese su contraseña"
-    read userPassword
-    echo "usuario creado: nombre:$usuarioNombre contraseña:$userPassword"
-    fechaCreacion="$(date +"%Y-%m-%d")"
-    usuario="$usuarioNombre:$userPassword:$fechaCreacion" 
-    echo $usuario >> usuarios.txt
-    inicio
+opcion1() {
+    echo ~~~~~~~~~~~~~~~~~~~~~~~
+    echo "Ingrese el nombre de usuario: "
+    read usuario
+    echo "Ingrese la contraseña: "
+    read contrasena
+    echo ~~~~~~~~~~~~~~~~~~~~~~~
+
+    fecha=$(date "+%d-%m-%Y")
+
+    echo "$usuario:$contrasena:$fecha" >> "$listaUsuarios"
 }
 
-ingresoAlSistema(){
-echo "Ingrese su usuario:"
-read nombre_usuario
-echo "Ingrese su contraseña:"
-read contrasena
+opcion2() {
+    echo ~~~~~~~~~~~~~~~~~~~~~~~
+    echo "Ingrese el nombre de usuario: " 
+    read usuario
+    echo "Ingrese la contraseña: " 
+    read contrasena
+    echo ~~~~~~~~~~~~~~~~~~~~~~~
 
-encontrado=0
-fecha="$(date +"%Y-%m-%d")"
-while IFS= read linea; 
-do
-    usuario=$(echo "$linea" | cut -d ":" -f 1)
-    echo "$usuario"
-    password=$(echo "$linea" | cut -d ":" -f 2)
-    echo "$password"
-    fechaIngreso=$(echo "$linea" | cut -d ":" -f 3)
-    echo "$fechaIngreso"
+    infoUsuario=$(grep "^${usuario}:" "$listaUsuarios")
 
-    if [ "$usuario" = "$nombre_usuario" ] && [ "$password" = "$contrasena" ]; then
-        encontrado=1
-        if [ $fechaIngreso == $fecha ]; then
-            echo "Bienvenido, $nombre_usuario"
-            echo "su ultimo ingreso fue $fechaIngreso"
-            break
-        elif [ $fechaIngreso != $fecha ]; then
-            echo "Bienvenido, $nombre_usuario"
-            echo "Usted ingresó por última vez el $fechaIngreso"
-            sed -i -r "s/(^$usuario.*):(.*)/\1:$fecha/" usuarios.txt
-            break
+    if [[ -n $infoUsuario ]]; then
+        contrasenaGuardado=$(echo "$infoUsuario" | cut -d":" -f2)
+        ultimoAcceso=$(echo "$infoUsuario" | cut -d":" -f3)
+
+        if [[ $contrasena == $contrasenaGuardado ]]; then
+            fecha=$(date "+%d-%m-%Y")
+            letra="a"
+            sed -i "s|^${usuario}:${contrasenaGuardado}:.*$|${usuario}:${contrasenaGuardado}:${fecha}|" "$listaUsuarios"
+            
+            echo
+
+            while true; do
+                segundoMenu
+                read opcionElegida
+                echo
+
+                case $opcionElegida in
+                    1)                     
+                        echo "Ingrese la nueva contraseña: " 
+                        read contrasenaNueva
+                        echo
+                        
+                        sed -i "s|^${usuario}:${contrasenaGuardado}:.*$|${usuario}:${contrasenaNueva}:${ultimoAcceso}|" "$listaUsuarios"
+
+                        echo "Contraseña cambiada.";;
+                    2)
+                        echo "Ingrese una letra: " 
+                        read letra
+                        echo
+
+                        echo "Ha ingresado la letra: $letra";;
+                    3)                        
+                        palabras=()
+
+                        while IFS= read -r palabra; do
+                            if [[ "${palabra:0:1}" == "$letra" ]]; then
+                                palabras+=("$palabra")
+                            fi
+                        done < "diccionario.txt";;
+                    4)                  
+                        cuentaPalabras="${#palabras[@]}"
+                        echo "Palabras encontradas: $cuentaPalabras";;
+                    5)          
+                        nombreArchivo="informe_$(date "+%d%m%Y_%H%M%S").txt"
+
+                        echo "Fecha y hora del informe: $(date)" > "$nombreArchivo"
+                        echo "Palabras encontradas que comienzan con la letra $letra:" >> "$nombreArchivo"
+                        for palabra in "${palabras[@]}"; do
+                            echo "$palabra" >> "$nombreArchivo"
+                        done;;
+                    6)
+                        break;;
+                    *)
+                        echo "Opción inválida. Por favor, intente nuevamente.";;
+                esac
+
+                echo
+            done
+        else
+            echo "Contraseña incorrecta. Intente nuevamente."
         fi
-        break
+    else
+        echo "Usuario no encontrado. Intente nuevamente."
     fi
-    if [ "$usuario" != "$nombre_usuario" ] || [ "$password" != "$contrasena" ]; then
-        echo "usuario o contraseña incorrectos"
-        break
-    fi
-done < usuarios.txt
 }
 
+guardarVariable(){
+    echo "Ingresa una letra para buscar"
+    read letra
+}
 
-inicio
+buscarPalabras(){
+    if [[ "$letra" != "a" ]]; then 
+    buscar=$(grep "^${letra}:" "$diccionario")
+    else
+    buscar=$(grep "^${"a"}:" "$diccionario")
+    encontrados=0
+    fi
+    echo $buscar
+}
+
+while true; do
+    primerMenu
+    read opcionElegida
+    echo
+
+    case $opcionElegida in
+        1)
+            opcion1
+            ;;
+        2)
+            opcion2
+            ;;
+        3)
+            echo "Saliendo del Sistema."
+            break
+            ;;
+        *)
+            echo "Opción inválida. Por favor, intente nuevamente."
+            ;;
+    esac
+
+    echo
+done

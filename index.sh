@@ -1,7 +1,6 @@
 #! /bin/bash
 
-inicio(){
-
+menu(){
     echo "Bienvenido!"
     echo " "
     echo "1)Opción 1. Ingresar Usuario y Contraseña."
@@ -9,6 +8,10 @@ inicio(){
     echo "3)Opción 3. Salir del sistema."
     read inputUsuario
 
+}
+
+inicio(){
+    menu
     while [ $inputUsuario -ne 3 ]
     do
     if [ $inputUsuario -eq 1 ];
@@ -34,32 +37,49 @@ ingresoUsuario(){
     echo "Ingrese su contraseña"
     read userPassword
     echo "usuario creado: nombre:$usuarioNombre contraseña:$userPassword"
-    usuario="$usuarioNombre/$userPassword" 
+    fechaCreacion="$(date +"%Y-%m-%d")"
+    usuario="$usuarioNombre:$userPassword:$fechaCreacion" 
     echo $usuario >> usuarios.txt
+    inicio
 }
 
 ingresoAlSistema(){
-    echo "Ingrese su usuario"
-    read ingresoUsuario
-    echo "Ingrese su contrasena"
-    read ingresoContrasena
-while read usuarioYContrasena; do
-    for (( i=0; i<${#usuarioYContrasena}; i++ )); do
-    if [ "${usuarioYContrasena:i:1}" = "/" ]; then
-    echo "Se encontró el carácter '/' en la posición $i"
-    usuario=$(echo $usuarioYContrasena | cut -d "/" -f 1)
-    password=$(echo $usuarioYContrasena | cut -d "/" -f 2)
-    #usuario="${usuarioYContrasena:$i}"
-    #password="${usuarioYContrasena:$(($i+1))}"
-    break
+echo "Ingrese su usuario:"
+read nombre_usuario
+echo "Ingrese su contraseña:"
+read contrasena
+
+encontrado=0
+fecha="$(date +"%Y-%m-%d")"
+while IFS= read linea; 
+do
+    usuario=$(echo "$linea" | cut -d ":" -f 1)
+    echo "$usuario"
+    password=$(echo "$linea" | cut -d ":" -f 2)
+    echo "$password"
+    fechaIngreso=$(echo "$linea" | cut -d ":" -f 3)
+    echo "$fechaIngreso"
+
+    if [ "$usuario" = "$nombre_usuario" ] && [ "$password" = "$contrasena" ]; then
+        encontrado=1
+        if [ $fechaIngreso == $fecha ]; then
+            echo "Bienvenido, $nombre_usuario"
+            echo "su ultimo ingreso fue $fechaIngreso"
+            break
+        elif [ $fechaIngreso != $fecha ]; then
+            echo "Bienvenido, $nombre_usuario"
+            echo "Usted ingresó por última vez el $fechaIngreso"
+            sed -i -r "s/(^$usuario.*):(.*)/\1:$fecha/" usuarios.txt
+            break
+        fi
+        break
     fi
-    done
-echo "$usuario - $password"
+    if [ "$usuario" != "$nombre_usuario" ] || [ "$password" != "$contrasena" ]; then
+        echo "usuario o contraseña incorrectos"
+        break
+    fi
 done < usuarios.txt
 }
-
-#falta comparar los usuarios con los inputs del ingreso
-#arreglar nombres de las variables
 
 
 inicio
